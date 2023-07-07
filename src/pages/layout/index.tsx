@@ -80,7 +80,7 @@ const LayoutComponents = () => {
 					<SiderComponents
 						itemsSider={itemsSider}
 						onMenuClick={onMenuClick}
-						activeKey={activeKey}
+						activeKey={activeKey} 
 					></SiderComponents>
 				</Sider>
 				<Layout>

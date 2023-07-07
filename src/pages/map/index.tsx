@@ -2,6 +2,9 @@ import { useEffect } from 'react';
 
 import * as THREE from 'three';
 
+import { createMaterial } from './rain-material.js';
+import { createGeomerty } from './random-rectangle.js';
+
 const district = (AMap: any, map: any) => {
     const district = new AMap.DistrictSearch({
         subdistrict: 0,   //获取边界不需要返回下级行政区
@@ -123,9 +126,9 @@ const effect = () => {
     //创建雨
     function createRain() {
 
-        const geometry = createGeomerty()
-        const material = createMaterial()
-
+        const geometry = createGeomerty();
+        const material = createMaterial();
+        materialAll = material;
         var mesh = new THREE.Mesh(geometry, material);
         const coords = customCoords.lngLatsToCoords([121.727491,39.014097]);
 
@@ -140,195 +143,8 @@ const effect = () => {
         return mesh;
     }
 
-    // 创建几何体
-    function createGeomerty() {
-        const box = new THREE.Box3(
-            new THREE.Vector3(-4000, 0, -4000),
-            new THREE.Vector3(4000, 5000, 4000)
-        );
-
-
-        // 创建几何体
-        let geometry1 = new THREE.BufferGeometry();
-
-        const vertices = [];
-        const normals = [];
-        const uvs = [];
-        const indices = [];
-
-        for (let i = 0; i < 2000; i++) {
-            const pos = new THREE.Vector3();
-            pos.x = Math.random() * (box.max.x - box.min.x) + box.min.x;
-            pos.y = Math.random() * (box.max.y - box.min.y) + box.min.y;
-            pos.z = Math.random() * (box.max.z - box.min.z) + box.min.z;
-
-            const height = 200;
-            const width = 20;
-
-            const rect = [
-                pos.x + width,
-                pos.y + height / 2,
-                pos.z,
-                pos.x - width,
-                pos.y + height / 2,
-                pos.z,
-                pos.x - width,
-                pos.y - height / 2,
-                pos.z,
-                pos.x + width,
-                pos.y - height / 2,
-                pos.z
-            ];
-
-            // 定义旋转轴
-            const axis = new THREE.Vector3(0, 0, 1).normalize();
-            //定义旋转角度
-            const angle = 0;
-            // 创建旋转矩阵
-            const rotationMatrix = new THREE.Matrix4().makeRotationAxis(axis, angle);
-
-            for (let index = 0; index < rect.length; index += 3) {
-                const vec = new THREE.Vector3(rect[index], rect[index + 1], rect[index + 2]);
-                //移动到中心点
-                vec.sub(new THREE.Vector3(pos.x, pos.y, pos.z))
-                //绕轴旋转
-                vec.applyMatrix4(rotationMatrix);
-                //移动到原位
-                vec.add(new THREE.Vector3(pos.x, pos.y, pos.z))
-                rect[index] = vec.x;
-                rect[index + 1] = vec.y;
-                rect[index + 2] = vec.z;
-            }
-            // console.log(rect)
-
-            vertices.push(...rect)
-            normals.push(
-                pos.x,
-                pos.y,
-                pos.z,
-                pos.x,
-                pos.y,
-                pos.z,
-                pos.x,
-                pos.y,
-                pos.z,
-                pos.x,
-                pos.y,
-                pos.z
-            );
-
-            uvs.push(1, 1, 0, 1, 0, 0, 1, 0);
-
-            indices.push(
-                i * 4 + 0,
-                i * 4 + 1,
-                i * 4 + 2,
-                i * 4 + 0,
-                i * 4 + 2,
-                i * 4 + 3
-            );
-        }
-        geometry1.setAttribute(
-            "position",
-            new THREE.BufferAttribute(new Float32Array(vertices), 3)
-        );
-        geometry1.setAttribute(
-            "normal",
-            new THREE.BufferAttribute(new Float32Array(normals), 3)
-        );
-        geometry1.setAttribute(
-            "uv",
-            new THREE.BufferAttribute(new Float32Array(uvs), 2)
-        );
-        geometry1.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
-
-        return geometry1
-    }
-
-    // 创建雨材质
-    function createMaterial() {
-
-        const material = new THREE.MeshBasicMaterial({
-            color: '#fff',
-            transparent: true,
-            opacity: 0.5,
-            
-            depthWrite: false,
-        });
-        
-        material.onBeforeCompile = function (shader, renderer) {
-            const getFoot = `
-                uniform float top;
-                uniform float bottom;
-                uniform float time;
-                uniform mat3 rotationMatrix;
-
-                #include <common>
-                float angle(float x, float y){
-                return atan(y, x);
-                }
-                vec2 getFoot(vec2 camera,vec2 normal,vec2 pos){
-                vec2 position;
-
-                float distanceLen = distance(pos, normal);
-
-                float a = angle(camera.x - normal.x, camera.y - normal.y);
-
-                pos.x > normal.x ? a -= 0.785 : a += 0.785;
-
-                position.x = cos(a) * distanceLen;
-                position.y = sin(a) * distanceLen;
-
-                return position + normal;
-            }
-            `;
-            const begin_vertex = `
-                vec2 foot = getFoot(vec2(cameraPosition.x, cameraPosition.z),  vec2(normal.x, normal.z), vec2(position.x, position.z));
-                // 计算目标当前高度
-                float height = top - bottom;
-                // 落地后重新开始，保持运动循环
-                float y = normal.y - bottom - height * time;
-                y = y + (y < 0.0 ? height : 0.0);
-                // 利用自由落体公式计算目标高度
-                float ratio = (1.0 - y / height) * (1.0 - y / height);
-                y = height * (1.0 - ratio);
-                // debuge: 水平面上朝着z轴匀速移动
-                float z = foot.y + 1200.0 * ratio;
-                // 调整坐标参考值
-                y += bottom;
-                y += position.y - normal.y;
-                // 生成变换矩阵
-                vec3 transformed = vec3(  foot.x , y, z) ; 
-            `;
-            shader.vertexShader = shader.vertexShader.replace(
-                "#include <common>",
-                getFoot
-            );
-            shader.vertexShader = shader.vertexShader.replace(
-                "#include <begin_vertex>",
-                begin_vertex
-            );
-
-            shader.uniforms.cameraPosition = {
-                value: new THREE.Vector3(0, 200, 0),
-            };
-            shader.uniforms.top = {
-                value: 5000,
-            };
-            shader.uniforms.bottom = {
-                value: 0,
-            };
-            shader.uniforms.time = {
-                value: 0,
-            };
-
-            (material as any).uniforms = shader.uniforms;
-
-        };
-
-        materialAll = material;
-        return material
-    }
+   
+    
 
     // 天气预报
     AMap.plugin('AMap.Weather', function () {
