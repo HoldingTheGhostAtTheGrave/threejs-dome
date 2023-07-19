@@ -1,37 +1,19 @@
 import { useEffect } from 'react';
 
 import * as THREE from 'three';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 
 import { createMaterial } from './rain-material.js';
 import { createGeomerty } from './random-rectangle.js';
 
-const district = (AMap: any, map: any) => {
-    const district = new AMap.DistrictSearch({
-        subdistrict: 0,   //获取边界不需要返回下级行政区
-        extensions: 'all',  //返回行政区边界坐标组等具体信息
-        level: 'district'  //查询行政级别为 市
-    });
-    district.search('东方市', function (status: string, result: any) {
-        if (status === 'complete') {
-            const data = result.districtList[0].boundaries;
-            for (let i = 0; i < data.length; i += 1) {//构造MultiPolygon的path
-                data[i] = [data[i]]
-            }
-            const polygon = new AMap.Polygon({
-                strokeWeight: 1,
-                path: data,
-                fillOpacity: 0.2,
-                fillColor: '#80d8ff',
-                strokeColor: '#0091ea'
-            });
-            map.add(polygon)
-            // map.setFitView(polygon);//视口自适应
-        }
-    });
-}
-
 const effect = () => {
     let AMap = (window as any).AMap;
+
+    const lngLatsToCoords = (x:number,y:number) => {
+        let [lngLat] = customCoords.lngLatsToCoords([x, y]);
+        return lngLat;
+    }
 
     // 创建折线对象
     const path = [
@@ -104,7 +86,9 @@ const effect = () => {
     });
 
 
-    let camera: any, renderer: any, scene: any ,materialAll: any;
+    let camera: any, renderer: any, scene: any, materialAll: any , water:any;
+    let sun = new THREE.Vector3();
+
     // 数据转换工具
     const customCoords = map.customCoords;
 
@@ -120,41 +104,48 @@ const effect = () => {
         map.add(polygon);
 
         createRain();
+        createOBJLoader();
     });
 
+    // 加载模型船模型
+    const createOBJLoader = () => {
+        new MTLLoader().load("/public/models/工程船.mtl", (materials) => {
+            const objLoader = new OBJLoader();
+            materials.preload();
+            objLoader.setMaterials(materials);
+            objLoader.load("/public/models/工程船.obj", function (object) {
+                object.rotation.y = Math.PI / 2;
+                object.rotation.x = Math.PI / 2;
+                const [x,y] = lngLatsToCoords(121.710866, 39.001494);
+                object.position.set(x,y, 0);
+                object.scale.set(0.04, 0.04, 0.04);
+                // 创建环境光
+                const ambientLight = new THREE.AmbientLight(0xffffff,5); // 参数：颜色，强度
+                scene.add(ambientLight);
+                scene.add(object);
+            });
+        });
+    }
 
     //创建雨
     function createRain() {
-
         const geometry = createGeomerty();
         const material = createMaterial();
         materialAll = material;
         var mesh = new THREE.Mesh(geometry, material);
-        const coords = customCoords.lngLatsToCoords([121.727491,39.014097]);
+        const [x,y] = lngLatsToCoords(121.727491, 39.014097);
 
-        mesh.scale.set(0.6,0.6,0.5);
+        mesh.scale.set(0.6, 0.6, 0.5);
 
 
-        mesh.position.set(coords[0][0], coords[0][1],0);
+        mesh.position.set(x, y, 0);
         mesh.rotation.x = Math.PI / 2.2
 
         scene.add(mesh);
 
         return mesh;
     }
-
-   
-    
-
-    // 天气预报
-    AMap.plugin('AMap.Weather', function () {
-        const weather = new AMap.Weather();
-        weather.getLive('东方市', function (err: string, data: any) {
-            console.log(data);
-        });
-    });
-    let time  =0;
-
+    let time = 0;
     let gllayer = new AMap.GLCustomLayer({
         zIndex: 10,
         init: (gl: any) => {
@@ -162,26 +153,24 @@ const effect = () => {
             renderer = new THREE.WebGLRenderer({ context: gl }); // 地图的 gl 上下文 
             renderer.autoClear = false; // 自动清空画布这里必须设置为 false，否则地图底图将无法显示
             scene = new THREE.Scene();
-
         },
         render: () => {
-
-
             renderer.resetState();
             customCoords.setCenter([116.52, 39.79]);
             const { near, far, fov, up, lookAt, position } = customCoords.getCameraParams();
 
-            
             camera.near = near;
             camera.far = far;
             camera.fov = fov;
             camera.position.set(...position);
             camera.up.set(...up);
 
-
-            if(materialAll && materialAll.uniforms){
+            if (materialAll && materialAll.uniforms) {
                 time = (time + clock.getDelta() * 0.4) % 1;
                 materialAll.uniforms.time.value = time;
+            }
+            if(water){
+                water.material.uniforms["time"].value += 1.0 / 60.0;
             }
 
             camera.lookAt(...lookAt);
@@ -189,8 +178,6 @@ const effect = () => {
 
             renderer.render(scene, camera);
             renderer.resetState();
-
-            
         },
     });
 
@@ -210,13 +197,10 @@ const effect = () => {
     // 动画
     function animate() {
         map.render();
-        
+
         requestAnimationFrame(animate);
     }
     animate();
-
-
-
 }
 
 const MapCar = () => {

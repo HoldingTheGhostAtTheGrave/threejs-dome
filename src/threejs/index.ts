@@ -92,5 +92,12 @@ export class Threejs {
 		this.controls.maxDistance = 9;
 		this.controls.update();
 	}
-	// 加载模型
+	// render
+	render(callback?:() => void){
+		this.controls?.update?.();
+        (this.camera as any ).updateProjectionMatrix();
+        this.renderer!.render(this.scene as any, this.camera as any);
+        requestAnimationFrame(() => this.render(callback));
+		callback?.();
+	}
 }

@@ -14,7 +14,7 @@ import {
 
 import SiderComponents from '@/components/Sider';
 import routes from '@/routes';
-import { RouteObjectCustomize } from '@/type/index.type';
+import { RouteObjectCustomize } from '@/vite-env';
 
 import layoutScss from './index.module.scss';
 

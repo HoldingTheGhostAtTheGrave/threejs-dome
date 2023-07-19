@@ -54,15 +54,15 @@ const effect = () => {
 
         const now = new Date();
         const interpolatedValue = linearInterpolation(dateTime(now.getHours(), now.getMinutes(), now.getSeconds()));
-        if (interpolatedValue == -92.4 || interpolatedValue == 92.4) {
-            if (isCreateSphereGeometry) return;
-            createSphereGeometry();
-            isCreateSphereGeometry = true;
-        } else {
-            moonMesh && (threejs!.scene).remove(moonMesh);
-            moonMesh = null;
-            isCreateSphereGeometry = false;
-        }
+        // if (interpolatedValue == -92.4 || interpolatedValue == 92.4) {
+        //     if (isCreateSphereGeometry) return;
+        //     createSphereGeometry();
+        //     isCreateSphereGeometry = true;
+        // } else {
+        //     moonMesh && (threejs!.scene).remove(moonMesh);
+        //     moonMesh = null;
+        //     isCreateSphereGeometry = false;
+        // }
         parameters.elevation = interpolatedValue;
         updateSun();
         requestAnimationFrame(render);
@@ -122,7 +122,6 @@ const effect = () => {
                 object.position.y = 0;
                 object.rotation.y = -22;
                 object.scale.set(0.005, 0.005, 0.005);
-                object.name = "engineerShip";
                 (threejs?.scene).add(object);
             });
         });
@@ -186,7 +185,7 @@ const effect = () => {
     createSpotLight();
     updateSun();
     render();
-    createSphereGeometry();
+    // createSphereGeometry();
 }
 
 const OceanSun = () => {

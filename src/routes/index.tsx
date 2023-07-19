@@ -4,41 +4,50 @@ import {
 } from 'react';
 
 import Nprogress from '@/components/Nprogress';
-import { RouteObjectCustomize } from '@/type/index.type';
+import { RouteObjectCustomize } from '@/vite-env';
 import { AppstoreOutlined } from '@ant-design/icons';
 
 const routes: RouteObjectCustomize[] = [
 	{
 		path: "/",
-		label: "threeJS 案例列表",
+		label: "three",
 		element: lazy(() => import("@/pages/layout")),
 		icon: <AppstoreOutlined />,
 		children: [
-			
 			{
-				label: "3d 看房",
+				label: "不好看房",
 				index: true,
 				element: lazy(() => import("@/pages/3d-vr-house-viewing")),
 			},
 			{
 				path: "/car",
-				label: "汽车",
+				label: "很小汽车",
 				element: lazy(() => import("@/pages/index")),
 			},
 			{
 				path: "/ocean",
-				label: "海洋",
+				label: "日出夕颜",
 				element: lazy(() => import("@/pages/ocean-sun")),
 			},
 			{
 				path: "/map",
-				label: "地图",
+				label: "看看世界",
 				element: lazy(() => import("@/pages/map")),
 			},
 			{
+				path: "/water",
+				label: "不一样的水",
+				element: lazy(() => import("@/pages/water")),
+			},
+			{
 				path: "/about",
-				label: "关于我",
+				label: "看看我",
 				element: lazy(() => import("@/pages/about")),
+			},
+			{
+				path: "/architecture",
+				label: "建筑",
+				element: lazy(() => import("@/pages/architecture")),
 			},
 		],
 	},
